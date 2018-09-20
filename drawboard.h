@@ -6,38 +6,46 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QString>
+#include <QFileDialog>
+#include <QLabel>
+#include <QStatusBar>
+#include "shape.h"
+#include "line.h"
+#include "ellipse.h"
+#include "rectangle.h"
 
 class DrawBoard : public QWidget
 {
     Q_OBJECT
 public:
     explicit DrawBoard(QWidget *parent = 0);
-    void setBackgroundPath(QString path);
     ~DrawBoard();
+    void paintEvent(QPaintEvent *);
+    void setDrawType(int type);
+    void setcolorType(int color);
+    void newDrawing();
+    void openDrawing();
+    void saveDrawing();
+    bool getModifiedFlag();
 
 protected:
-    void mouseMoveEvent(QMouseEvent *event);
     void mousePressEvent(QMouseEvent *event);
-    void paintEvent(QPaintEvent *event);
-    void resizeEvent(QResizeEvent *);
-    void mouseReleaseEvent(QMouseEvent *);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+
 
 private:
-    QPen pen;
-    enum {DRAW_START=0, DRAW_ING=1, DRAW_END=2};
-    struct DrawLinePath{
-        int startX;
-        int startY;
-        int endX;
-        int endY;
-    };
-    int DRAW_STATUS = DRAW_END;
-    QList<QPainterPath> paintPathList;
-    QList<DrawLinePath> drawLinePathList;
-    int startX, startY, endX, endY;
-    QString backgroundPath;
-    QColor color;
-    QImage *image;
+    QList<Shape*> shapes;
+    QPoint p1, p2;
+    int drawType;    // Current draw type, 0-line, 1-ellipse, 2-rectangle
+    int colorType;
+    bool beginDraw;
+    QLabel *mousePosLabel;
+    bool isModified;
+    QString fileName;
+//    void drawLine(QColor c, QPen &p, QPoint p1, QPoint p2);
+    void saveFile(QString fileName);
+    void openFile(QString fileName);
 };
 
 #endif // DRAWBOARD_H

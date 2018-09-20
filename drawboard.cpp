@@ -6,6 +6,7 @@
  * Description: Implement File of the main class Drawboard
  *****************************************/
 #include "drawboard.h"
+#include "mainwindow.h"
 
 /*
  * Summary: Constructor of DrawBoard
@@ -15,130 +16,226 @@
  */
 DrawBoard::DrawBoard(QWidget *parent) : QWidget(parent)
 {
-    backgroundPath = "-1";
-    setAttribute(Qt::WA_StaticContents); // Automatically Resize
-    setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
-    image = new QImage(this->width(), this->height(), QImage::Format_Indexed8);
-    image->fill(qRgba(0, 0, 0, 0));
-    color = Qt::black;
-    pen.setWidth(10);
-    pen.setCapStyle(Qt::RoundCap);
-    pen.setJoinStyle(Qt::RoundJoin);
-    pen.setStyle(Qt::SolidLine);
-}
-
-/*
- * Summary: The event of mouse's release event
- * Parameters:
- *      *event: the pointer of release event
- * Return: Void
- */
-void DrawBoard::mouseReleaseEvent(QMouseEvent *event)
-{
-    repaint();
-    DRAW_STATUS = DRAW_END;
-    update();
-}
-
-/*
- * Summary: The event of resize the window
- * Parameters:
- *      *event: the pointer of release event
- * Return: Void
- */
-void DrawBoard::resizeEvent(QResizeEvent *event)
-{
-    update();
-}
-
-/*
- * Summary: set Background's path
- * Parameters:
- *      path: QString, path of the background
- * Return: Void
- */
-void DrawBoard::setBackgroundPath(QString path)
-{
-    this->backgroundPath = path;
-    image->load(path);
-    update();
+    shapes.clear();
+    beginDraw = false;
+    colorType = 0;
+    isModified = false;
+    fileName = tr("");
+    mousePosLabel = new QLabel;
+    mousePosLabel->setText("");
+    mousePosLabel->setFixedWidth(150);
+    MainWindow *p = (MainWindow*)parent;
+    p->statusBar()->addPermanentWidget(mousePosLabel);
+    setMinimumSize(500, 400);
+    setMouseTracking(true);
 }
 
 /*
  * Summary: The event of paint
  * Parameters:
- *      *event: the pointer of paint event
+ *      *event: the event pointer of paint
  * Return: Void
  */
-void DrawBoard::paintEvent(QPaintEvent *event)
+void DrawBoard::paintEvent(QPaintEvent *)
 {
-    QPainter painter(this); // generate an object of painter
-    painter.setPen(pen);
-    painter.drawImage(rect(), *image);
-    switch(DRAW_STATUS)
+    QPainter p(this);
+    QColor c;
+    for(auto shape:shapes)
     {
-    case DRAW_START:
-        break;
-    case DRAW_ING:
-    case DRAW_END:
-        for(int i = 0;i < drawLinePathList.size(); i++)
+        switch(colorType)
         {
-            DrawLinePath drawlinePath = drawLinePathList.at(i);
-            painter.drawLine(drawlinePath.startX, drawlinePath.startY, drawlinePath.endX, drawlinePath.endY);
+        case 0:
+            shape->setColor(Qt::black);
+            c = Qt::black;
+            break;
+        case 1:
+            shape->setColor(Qt::green);
+            c = Qt::green;
+            break;
+        case 2:
+            shape->setColor(Qt::red);
+            c = Qt::red;
+            break;
         }
+        shape->draw(&p);
+    }
+
+    Shape *temp = nullptr;
+    switch(drawType)
+    {
+    case 0:
+        temp = new Line(p1, p2, c);
+        break;
+    case 1:
+        temp = new Ellipse(p1, p2, c);
+        break;
+    case 2:
+        temp = new Rectangle(p1, p2, c);
         break;
     }
+    temp->draw(&p);
+    delete temp;
 }
 
-/*
- * Summary: The event of mouse move
- * Parameters:
- *      *event: the pointer of mouse move event
- * Return: Void
- */
-void DrawBoard::mouseMoveEvent(QMouseEvent *event)
+void DrawBoard::setDrawType(int type)
 {
-    if(event->buttons() & Qt::LeftButton)
-    {
-        endX = event->x();
-        endY = event->y();
-        DRAW_STATUS = DRAW_ING;
-        DrawLinePath drawlinePath{startX, startY, endX, endY};
-        drawLinePathList.push_back(drawlinePath);
-
-        if(((endX - startX) > 1) || ((endY - startY) > 1))
-        {
-            repaint();
-        }
-        else
-        {
-            update();
-        }
-        startX = endX;
-        startY = endY;
-    }
-    else if(event->buttons() & Qt::RightButton)
-    {
-
-    }
+    drawType = type;
 }
 
+void DrawBoard::setcolorType(int color)
+{
+    colorType = color;
+}
 
-
-
-/*
- * Summary: The event of mouse press
- * Parameters:
- *      *event: the pointer of mouse press event
- * Return: Void
- */
 void DrawBoard::mousePressEvent(QMouseEvent *event)
 {
-    DRAW_STATUS = DRAW_START;
-    if(event->button() == Qt::LeftButton)
+    p1 = event->pos();
+    p2 = p1;
+    beginDraw = true;
+}
+
+void DrawBoard::mouseReleaseEvent(QMouseEvent *event)
+{
+    p2 = event->pos();
+    beginDraw = false;
+    if(p1 == p2)
+        return;
+    Shape *shape = nullptr;
+    switch(drawType)
     {
-        startX = event->x();
-        startY = event->y();
+    case 0:
+        shape = new Line(p1, p2);
+        break;
+    case 1:
+        shape = new Ellipse(p1, p2);
+        break;
+    case 2:
+        shape = new Rectangle(p1, p2);
+        break;
+    }
+    shapes.append(shape);
+    isModified = true;
+    update();
+}
+
+void DrawBoard::mouseMoveEvent(QMouseEvent *event)
+{
+    mousePosLabel->setText("X:" + QString::number(event->x()) + QString::number(event->y()));
+    if(false == beginDraw)
+        return;
+    p2 = event->pos();
+    update();
+}
+
+bool DrawBoard::getModifiedFlag()
+{
+    return isModified;
+}
+
+/*
+ * Summary: make a new draw
+ * Parameters:
+ *      void
+ * Return: void
+ */
+void DrawBoard::newDrawing()
+{
+    for(auto shape:shapes)
+    {
+        printf("%d\n", shape->type);
+        delete shape;
+    }
+    shapes.clear();
+    beginDraw = false;
+    isModified = false;
+    fileName = tr("");
+    parentWidget()->setWindowTitle(tr("Draw Board Untitled"));
+    update();
+}
+
+/*
+ * Summary: open a draw
+ * Parameters:
+ *      void
+ * Return: void
+ */
+void DrawBoard::openDrawing()
+{
+    fileName = QFileDialog::getOpenFileName(this, tr("Open File Dialog"), QDir::currentPath(),\
+                                            "Draw File(*.draw);;Images(*.png *.xpm *.jpg)");
+    if(fileName == tr(""))
+        return;
+
+    for(auto shape:shapes)
+        delete shape;
+    shapes.clear();
+    beginDraw = false;
+    isModified = false;
+    openFile(fileName);
+    parentWidget()->setWindowTitle(tr("Draw Board ") + fileName);
+    update();
+}
+
+/*
+ * Summary: save a draw
+ * Parameters:
+ *      void
+ * Return: void
+ */
+void DrawBoard::saveDrawing()
+{
+    if(fileName == tr(""))
+    {
+        fileName = QFileDialog::getSaveFileName(this, tr("Save File Dialog"), QDir::currentPath(),\
+                                                "Draw File(*.draw);;Images(*.png *.xpm *.jpg)");
+        if(fileName == tr(""))
+            return;
+    }
+    saveFile(fileName);
+    parentWidget()->setWindowTitle(tr("Draw Board ") + fileName);
+    isModified = false;
+}
+
+void DrawBoard::saveFile(QString fileName)
+{
+    QFile file(fileName);
+    if(file.open(QFile::WriteOnly | QFile::Truncate))
+    {
+        QTextStream out(&file);
+        out << shapes.length()<<endl;
+        for(auto shape:shapes)
+            shape->save(out);
+        file.close();
+    }
+}
+
+void DrawBoard::openFile(QString fileName)
+{
+    QFile file(fileName);
+    if(file.open(QFile::ReadOnly))
+    {
+        QTextStream in(&file);
+        int nums;
+        in >> nums;
+        int type;
+        Shape *currentShape;
+        for(int i = 0;i < nums;i++)
+        {
+            in >> type;
+            switch(type)
+            {
+            case 0:
+                currentShape = Line::read(in);
+                break;
+            case 1:
+                currentShape = Ellipse::read(in);
+                break;
+            case 2:
+                currentShape = Rectangle::read(in);
+            }
+            shapes.append(currentShape);
+        }
+        file.close();
     }
 }
 
@@ -150,7 +247,8 @@ void DrawBoard::mousePressEvent(QMouseEvent *event)
  */
 DrawBoard::~DrawBoard()
 {
-
+    for(auto shape:shapes)
+        delete shape;
 }
 
 

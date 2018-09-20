@@ -21,13 +21,21 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # In order to do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
+QMAKE_MAC_SDK = macosx10.13
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    drawboard.cpp
+    drawboard.cpp \
+    shape.cpp \
+    ellipse.cpp \
+    line.cpp \
+    rectangle.cpp
 
 HEADERS  += mainwindow.h \
-    drawboard.h
+    drawboard.h \
+    shape.h \
+    ellipse.h \
+    line.h \
+    rectangle.h
 
 FORMS    += mainwindow.ui
